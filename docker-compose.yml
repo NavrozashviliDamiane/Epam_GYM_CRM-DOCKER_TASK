@@ -1,0 +1,102 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    container_name: gymdb-postgres
+    environment:
+      POSTGRES_DB: gymdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: damiane1997
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  activemq:
+    image: apache/activemq-artemis:latest
+    container_name: activemq
+    environment:
+      ARTEMIS_USER: admin
+      ARTEMIS_PASSWORD: admin
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+
+  eureka-server:
+    image: eurekaserver:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+  main-service:
+    image: main-service:latest
+    container_name: main-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://gymdb-postgres:5432/gymdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: damiane1997
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: main-service
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "true"
+      EUREKA_CLIENT_FETCH_REGISTRY: "true"
+    depends_on:
+      - postgres
+      - activemq
+      - eureka-server
+    ports:
+      - "8080:8080"
+
+  trainer-workload-service:
+    image: trainer-workload-service:latest
+    container_name: trainer-workload-service
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/trainerdb
+    depends_on:
+      - activemq
+      - eureka-server
+      - mongodb
+    ports:
+      - "8082:8082"
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  pgadmin4:
+    image: dpage/pgadmin4
+    container_name: pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+
+
+volumes:
+  postgres_data:
+  mongo_data:
+  pgadmin-data:
+
